@@ -140,6 +140,7 @@ static void CALLBACK waveOutProc(HWAVEOUT hwo,
 	    {
 		    WAVEHDR *hdr = (WAVEHDR*) dwParam1;
 		    wmm_instance_t *ap = (wmm_instance_t*) hdr->dwUser;
+		    if (TYPEOF(ap->source) == CLOSXP) Rf_error("TODO synth not called yet");
 		    unsigned int bufSize = hdr->dwBufferLength;
 		    unsigned int bpf = ap->stereo ? 4 : 2;
 		    int res = primeBuffer(ap, hdr->lpData, bufSize / bpf);
@@ -169,6 +170,7 @@ static void CALLBACK waveInProc(
 		{
 			WAVEHDR *hdr = (WAVEHDR*) dwParam1;
 			wmm_instance_t *ap = (wmm_instance_t*) hdr->dwUser;
+
 			signed short int *si = (signed short int*) hdr->lpData;
 			unsigned int len = hdr->dwBytesRecorded / 2;
 			if (TYPEOF(ap->source) == REALSXP) {
@@ -177,6 +179,8 @@ static void CALLBACK waveInProc(
 				while (i < len && cp < lp)
 					d[cp++] = ((double)si[i++]) / 32768.0;
 				ap->position = cp;
+			} else if (TYPEOF(ap->source) == CLOSXP) {
+			  Rprintf("Synth callback not implemented yet TODO\n");
 			}
 			if (ap->position >= ap->length) /* pause if we reach the end */
 				waveInStop(ap->hin);
@@ -199,7 +203,9 @@ static wmm_instance_t *wmmaudio_create_player(SEXP source, float rate, int flags
 	ap->sample_rate = rate;
 	ap->done = NO;
 	ap->position = 0;
-	ap->length = LENGTH(source);
+	int sourcelen = -1;
+	if (TYPEOF(source) != CLOSXP) sourcelen = LENGTH(source);
+	ap->length = sourcelen;
 	ap->stereo = NO;
 	{ /* if the source is a matrix with 2 rows then we'll use stereo */
 		SEXP dim = Rf_getAttrib(source, R_DimSymbol);
@@ -219,7 +225,9 @@ static wmm_instance_t *wmmaudio_create_recorder(SEXP source, float rate, int cha
 	ap->sample_rate = rate;
 	ap->done = NO;
 	ap->position = 0;
-	ap->length = LENGTH(source);
+	int sourcelen = -1;
+	if (TYPEOF(source) != CLOSXP) sourcelen = LENGTH(source);
+	ap->length = sourcelen;
 	ap->stereo = (channels == 2) ? YES : NO;
 	ap->loop = (flags & APFLAG_LOOP) ? YES : NO;
 	/* if (ap->stereo) ap->length /= 2; we're bad - we us eposition as a raw pointer in the samples */
@@ -269,14 +277,16 @@ static wmm_instance_t *wmmaudio_create_recorder(SEXP source, float rate, int cha
 	R_PreserveObject(ap->source);
 	
 	Rf_setAttrib(ap->source, Rf_install("rate"), Rf_ScalarInteger(rate)); /* we adjust the rate */
-        Rf_setAttrib(ap->source, Rf_install("bits"), Rf_ScalarInteger(16)); /* we always use 16-bit for recording */
-        Rf_setAttrib(ap->source, Rf_install("class"), Rf_mkString("audioSample"));
-        if (ap->stereo) {
-                SEXP dim = Rf_allocVector(INTSXP, 2);
-                INTEGER(dim)[0] = 2;
-                INTEGER(dim)[1] = LENGTH(ap->source) / 2;
-                Rf_setAttrib(ap->source, R_DimSymbol, dim);
-        }
+	Rf_setAttrib(ap->source, Rf_install("bits"), Rf_ScalarInteger(16)); /* we always use 16-bit for recording */
+	Rf_setAttrib(ap->source, Rf_install("class"), Rf_mkString("audioSample"));
+	int len = 0;
+	if (TYPEOF(ap->source) != CLOSXP) len = LENGTH(ap->source);
+	if (ap->stereo) {
+	  SEXP dim = Rf_allocVector(INTSXP, 2);
+	  INTEGER(dim)[0] = 2;
+	  INTEGER(dim)[1] = len / 2;
+	  Rf_setAttrib(ap->source, R_DimSymbol, dim);
+	}
 	
 	return ap;
 }
@@ -288,6 +298,7 @@ static int wmmaudio_start(void *usr) {
 		return NO;
 	}
 	
+	if (TYPEOF(p->source) == CLOSXP) Rprintf("Synth not implemented yet TODO\n");
 	MMRESULT res;
 	WAVEFORMATEX fmt = {
 		WAVE_FORMAT_PCM, 

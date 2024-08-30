@@ -128,13 +128,14 @@ static au_instance_t *audiounits_create_player(SEXP source, float rate, int flag
 	ComponentDescription desc = { kAudioUnitType_Output, kAudioUnitSubType_DefaultOutput, kAudioUnitManufacturer_Apple, 0, 0 };
 	Component comp; 
 	OSStatus err;
-	
+	int len = -1;
+	if (TYPEOF(source) != CLOSXP) len = LENGTH(source);
 	au_instance_t *ap = (au_instance_t*) calloc(sizeof(au_instance_t), 1);
 	ap->source = source;
 	ap->sample_rate = rate;
 	ap->done = NO;
 	ap->position = 0;
-	ap->length = LENGTH(source);
+	ap->length = len;
 	ap->stereo = NO;
 	{ /* if the source is a matrix with 2 rows then we'll use stereo */
 		SEXP dim = Rf_getAttrib(source, R_DimSymbol);
@@ -211,12 +212,14 @@ static au_instance_t *audiounits_create_recorder(SEXP source, float rate, int ch
 	OSStatus err;
 	AudioObjectPropertyAddress aopAddress;
 
+	int len = -1;
+	if (TYPEOF(source) != CLOSXP) len = LENGTH(source);
 	au_instance_t *ap = (au_instance_t*) calloc(sizeof(au_instance_t), 1);
 	ap->source = source;
 	ap->sample_rate = rate;
 	ap->done = NO;
 	ap->position = 0;
-	ap->length = LENGTH(source);
+	ap->length = len;
 	ap->stereo = (chs == 2) ? YES : NO;
 	
 	propsize = sizeof(ap->inDev);
@@ -259,10 +262,12 @@ static au_instance_t *audiounits_create_recorder(SEXP source, float rate, int ch
 	Rf_setAttrib(ap->source, Rf_install("rate"), Rf_ScalarInteger(rate)); /* we adjust the rate */
 	Rf_setAttrib(ap->source, Rf_install("bits"), Rf_ScalarInteger(16)); /* we say it's 16 because we don't know - float is always 32-bit */
 	Rf_setAttrib(ap->source, Rf_install("class"), Rf_mkString("audioSample"));
+	int len = 0;
+	if (TYPEOF(ap->source) != CLOSXP) len = LENGTH(ap->source);
 	if (ap->stereo) {
 		SEXP dim = Rf_allocVector(INTSXP, 2);
 		INTEGER(dim)[0] = 2;
-		INTEGER(dim)[1] = LENGTH(ap->source) / 2;
+		INTEGER(dim)[1] = len / 2;
 		Rf_setAttrib(ap->source, R_DimSymbol, dim);
 	}
 	return ap;

@@ -81,6 +81,7 @@ static int paPlayCallback(const void *inputBuffer, void *outputBuffer,
 	if (ap->done) return paAbort;
 	/* Rprintf("paPlayCallback(in=%p, out=%p, fpb=%d, usr=%p)\n", inputBuffer, outputBuffer, (int) framesPerBuffer, userData);
 	//Rprintf(" - (sample_rate=%f, stereo=%d, loop=%d, done=%d, pos=%d, len=%d)\n", ap->sample_rate, ap->stereo, ap->loop, ap->done, ap->position, ap->length); */
+	Rf_error("Ik kom hier TODO\n");
 	if (ap->position == ap->length && ap->loop)
 		ap->position = 0;
 	unsigned int index = ap->position;
@@ -105,7 +106,9 @@ static int paPlayCallback(const void *inputBuffer, void *outputBuffer,
 			while (iBuf < sentinel)
 				*(iBuf++) = (float) *(iSrc++);
 			/* { int i = 0; while (i < framesPerBuffer) printf("%.2f ", ((float*) outputBuffer)[i++]); Rprintf("\n"); } */
-		} /* FIXME: support functions as sources... */
+		} else if (TYPEOF(ap->source) == CLOSXP) {/* FIXME: support functions as sources... */
+			Rf_error("Not implemented yet.");
+		}
 #else
 		SInt16 *iBuf = (SInt16*) outputBuffer;
 		SInt16 *sentinel = iBuf + samples;
@@ -117,7 +120,9 @@ static int paPlayCallback(const void *inputBuffer, void *outputBuffer,
 			double *iSrc = REAL(ap->source) + index;
 			while (iBuf < sentinel)
 				*(iBuf++) = (SInt16) (32767.0 * (*(iSrc++)));
-		} /* FIXME: support functions as sources... */
+		} else if (TYPEOF(ap->source) == CLOSXP) { /* FIXME: support functions as sources... */
+			Rf_error("Not implemented yet.");
+		}
 #endif
 		ap->position += rem;
 	} else {

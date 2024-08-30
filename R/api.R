@@ -54,6 +54,10 @@ play.audioSample <- function(x, rate, ...) {
   play.default(x, rate, ...)
 }
 
+play.Synth <- function(x, rate=44100, ...) {
+  play.default(x$fun, rate, ...)
+}
+
 `[.audioSample` <- function(x, ..., drop = FALSE) {
   y <- NextMethod("[")
   attr(y, "rate") <- attr(x, "rate", TRUE)
@@ -105,4 +109,13 @@ as.Sample.audioSample <- function(x, ...) {
   # we are not using sound's constructor, because we don't want to depend on it,
   # but it may prove to be dangerous if sound ever changes the format
   structure(list(sample = y, rate = x$rate, bits = x$bits), class="Sample")
+}
+
+Synthesizer <- function() {
+  size <- 1024L
+  synth_fun <- function(frame = 0L, buffer_size = size) {
+    par <- 1e-2
+    buffer <- sin(par*(seq_len(buffer_size) - 1 + frame*buffer_size))
+  }
+  return(structure(list(fun = synth_fun, buffer_size = size), class = "Synth"))
 }
